@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+@keyframes bounce-up-down {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(
+      -10px
+    ); /* Adjust the value for the desired bounce height */
+  }
+}
+
+.animate-bounce-up-down {
+  animation: bounce-up-down 2s infinite ease-in-out; /* Adjust duration and easing as needed */
+}
