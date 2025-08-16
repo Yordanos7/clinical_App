@@ -10,6 +10,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import AdbIcon from "@mui/icons-material/Adb";
+import { useAuth } from "../context/AuthContext";
 
 const NavItem = ({ to, label, icon, onClick }) => {
   const location = useLocation();
@@ -34,6 +35,7 @@ const NavItem = ({ to, label, icon, onClick }) => {
 export default function Navbar({ mode = "vertical", user }) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
 
   const toggleMobileMenu = () => {
     setShowMobileMenu((prev) => !prev);
@@ -45,13 +47,13 @@ export default function Navbar({ mode = "vertical", user }) {
   };
 
   // Retrieve role from localStorage
-  const role = localStorage.getItem("role");
-  const userId = localStorage.getItem("userId");
+  const role = authUser?.role || localStorage.getItem("role");
+  const userId = authUser?.userId || localStorage.getItem("userId");
 
   console.log("Role from localStorage:", role);
 
   const navItems = role
-    ? role === "patient"
+    ? role.trim().toLowerCase() === "patient"
       ? [
           { to: "/", label: "Home", icon: <HomeIcon /> },
           {
@@ -61,7 +63,7 @@ export default function Navbar({ mode = "vertical", user }) {
           },
           {
             to: `/medical-record/${userId || ""}`,
-            label: "Medical Records",
+            label: "Medical Record",
             icon: <CalendarTodayIcon />,
           },
           {
@@ -71,7 +73,7 @@ export default function Navbar({ mode = "vertical", user }) {
             onClick: handleLogOut,
           },
         ]
-      : role === "doctor"
+      : role.trim().toLowerCase() === "doctor"
       ? [
           { to: "/", label: "Home", icon: <HomeIcon /> },
           {
@@ -80,7 +82,7 @@ export default function Navbar({ mode = "vertical", user }) {
             icon: <ViewTimelineIcon />,
           },
           {
-            to: `/daily-plan`, // Patient-specific item
+            to: `/daily-plan`,
             label: "Daily plan",
             icon: <MonitorHeartOutlinedIcon />,
           },

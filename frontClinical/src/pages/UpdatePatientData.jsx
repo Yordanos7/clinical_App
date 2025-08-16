@@ -1,7 +1,8 @@
 import axios from "axios";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import { FaPlus, FaTrash } from "react-icons/fa";
 
 export default function UpdatePatientData() {
   const location = useLocation();
@@ -31,11 +32,34 @@ export default function UpdatePatientData() {
   }
 
   console.log("SecretCode in UpdatePatientData:", secretCode);
-  const [medicalHistory, setMedicalHistory] = useState(
-    patient.medicalHistory || ""
-  );
+  const [medicalHistory, setMedicalHistory] = useState([]);
+  const [newItem, setNewItem] = useState("");
   const [appointmentDate, setAppointmentDate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (patient.medicalHistory) {
+      try {
+        const parsedHistory = JSON.parse(patient.medicalHistory);
+        setMedicalHistory(
+          Array.isArray(parsedHistory) ? parsedHistory : [parsedHistory]
+        );
+      } catch (error) {
+        setMedicalHistory([patient.medicalHistory]);
+      }
+    }
+  }, [patient.medicalHistory]);
+
+  const handleAddItem = () => {
+    if (newItem.trim()) {
+      setMedicalHistory([...medicalHistory, newItem]);
+      setNewItem("");
+    }
+  };
+
+  const handleRemoveItem = (index) => {
+    setMedicalHistory(medicalHistory.filter((_, i) => i !== index));
+  };
 
   console.log("Request Body:", {
     doctorId,
@@ -49,7 +73,7 @@ export default function UpdatePatientData() {
       // Update medical history
       await axios.put(
         `http://localhost:5000/api/doctor/update-medical-history/${patient.id}`,
-        { medicalHistory },
+        { medicalHistory: JSON.stringify(medicalHistory) },
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -72,6 +96,7 @@ export default function UpdatePatientData() {
             },
           }
         );
+        window.dispatchEvent(new Event("appointmentCreated"));
       }
 
       navigate(`/doctor/${finalSecretCode}`, {
@@ -136,16 +161,39 @@ export default function UpdatePatientData() {
             className="bg-white rounded-lg shadow p-6"
           >
             <div className="mb-6">
-              <label className="block text-gray-700 text-sm font-medium mb-2">
-                Medical History
-              </label>
-              <textarea
-                className="w-full border border-gray-300 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                rows={6}
-                value={medicalHistory}
-                onChange={(e) => setMedicalHistory(e.target.value)}
-                placeholder="Enter patient's medical history..."
-              />
+              <h3 className="text-xl font-semibold mb-4">Common Health Data</h3>
+              <div className="space-y-4">
+                {medicalHistory.map((item, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between bg-gray-50 p-3 rounded-md"
+                  >
+                    <p className="text-gray-700">{item}</p>
+                    <button
+                      onClick={() => handleRemoveItem(index)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <FaTrash />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 flex items-center">
+                <input
+                  type="text"
+                  value={newItem}
+                  onChange={(e) => setNewItem(e.target.value)}
+                  placeholder="Add new health data (e.g., Blood Type: A+)"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddItem}
+                  className="ml-4 bg-blue-500 text-white p-3 rounded-md hover:bg-blue-600"
+                >
+                  <FaPlus />
+                </button>
+              </div>
             </div>
 
             <div className="mb-8">

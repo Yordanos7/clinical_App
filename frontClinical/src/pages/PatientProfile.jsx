@@ -96,6 +96,7 @@ export default function PatientProfile() {
   useEffect(() => {
     if (patient && patient.User) {
       localStorage.setItem("userId", patient.User.id);
+      console.log("Patient QR Code:", patient.qrCode);
     }
   }, [patient]);
 

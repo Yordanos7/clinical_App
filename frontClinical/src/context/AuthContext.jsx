@@ -13,9 +13,15 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem("token");
       const role = localStorage.getItem("role");
       const userId = localStorage.getItem("userId");
+      const name = localStorage.getItem("name");
+      const secretCode = localStorage.getItem("secretCode");
 
       if (token && role && userId) {
-        setUser({ token, role, userId });
+        const userToSet = { token, role, userId, name };
+        if (role === "doctor" && secretCode) {
+          userToSet.secretCode = secretCode;
+        }
+        setUser(userToSet);
       }
     } catch (error) {
       console.error("Failed to load user from localStorage", error);
@@ -27,6 +33,14 @@ export const AuthProvider = ({ children }) => {
 
   const login = (userData) => {
     try {
+      // Safeguard: Do not overwrite an existing session
+      if (user && user.token) {
+        console.warn(
+          "Login called when a user is already logged in. Aborting."
+        );
+        return;
+      }
+
       const {
         token,
         user: userInfo,
@@ -37,7 +51,21 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("token", token);
       localStorage.setItem("role", userInfo.role);
       localStorage.setItem("userId", userInfo.id);
-      setUser({ token, role: userInfo.role, userId: userInfo.id });
+      localStorage.setItem("name", userInfo.name);
+
+      const userToSet = {
+        token,
+        role: userInfo.role,
+        userId: userInfo.id,
+        name: userInfo.name,
+      };
+
+      if (userInfo.role === "doctor" && secretCode) {
+        localStorage.setItem("secretCode", secretCode);
+        userToSet.secretCode = secretCode;
+      }
+
+      setUser(userToSet);
 
       console.log(
         "Navigating to:",

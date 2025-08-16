@@ -26,7 +26,10 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await RegisterUser(registerData);
+      const response = await RegisterUser({
+        ...registerData,
+        name: `${registerData.name} ${registerData.lastName}`,
+      });
       login(response.data);
     } catch (error) {
       console.error(

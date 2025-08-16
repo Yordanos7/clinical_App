@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { loginUser } from "../services/authService";
 
@@ -8,7 +8,18 @@ export default function Login() {
     email: "",
     password: "",
   });
-  const { login } = useAuth();
+  const { login, user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      if (user.role === "doctor") {
+        navigate(`/doctor/${user.secretCode}`);
+      } else if (user.role === "patient") {
+        navigate(`/patient/user/${user.userId}`);
+      }
+    }
+  }, [user, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

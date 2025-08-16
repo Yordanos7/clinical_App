@@ -8,15 +8,20 @@ import {
   getPatientAppointments,
 } from "../services/appointmentService";
 import { useAuth } from "../context/AuthContext";
+import socket from "../services/socketService";
 
 export default function Appointments() {
   const [appointments, setAppointments] = useState([]);
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [liveAppointments, setLiveAppointments] = useState({});
   const navigate = useNavigate();
 
   const handleJoinRoom = (appointmentId) => {
+    if (user.role === "doctor") {
+      socket.emit("doctor-live", { roomId: appointmentId });
+    }
     navigate(`/room/${appointmentId}`);
   };
 
@@ -29,13 +34,21 @@ export default function Appointments() {
       }
 
       try {
-        let response;
-        if (user.role === "doctor") {
-          response = await getDoctorAppointments();
-        } else {
-          response = await getPatientAppointments();
-        }
-        setAppointments(response.data.appointments || []);
+        const response =
+          user.role === "doctor"
+            ? await getDoctorAppointments()
+            : await getPatientAppointments();
+        const fetchedAppointments = response.data.appointments || [];
+        setAppointments(fetchedAppointments);
+
+        // Join socket rooms for each appointment
+        fetchedAppointments.forEach((appointment) => {
+          socket.emit("join-room", {
+            roomId: appointment.id,
+            userId: user.id,
+            role: user.role,
+          });
+        });
       } catch (err) {
         setError(err.response?.data?.message || "Failed to fetch appointments");
       } finally {
@@ -46,9 +59,25 @@ export default function Appointments() {
     if (!authLoading) {
       fetchAppointments();
     }
-  }, [user, authLoading]);
 
-  console.log("Appointments:", appointments);
+    socket.on("doctor-is-live", ({ roomId }) => {
+      setLiveAppointments((prev) => ({ ...prev, [roomId]: true }));
+    });
+
+    const handleAppointmentCreated = () => {
+      fetchAppointments();
+    };
+
+    window.addEventListener("appointmentCreated", handleAppointmentCreated);
+
+    return () => {
+      socket.off("doctor-is-live");
+      window.removeEventListener(
+        "appointmentCreated",
+        handleAppointmentCreated
+      );
+    };
+  }, [user, authLoading]);
 
   if (loading) {
     return (
@@ -76,7 +105,7 @@ export default function Appointments() {
           transition={{ duration: 0.5 }}
         >
           <h1 className="text-3xl font-bold mb-8 text-gray-800">
-            {localStorage.getItem("role") === "doctor"
+            {user.role === "doctor"
               ? "My Appointments"
               : "My Scheduled Appointments"}
           </h1>
@@ -84,8 +113,7 @@ export default function Appointments() {
             <div className="bg-white rounded-lg shadow p-6 text-center">
               <p className="text-gray-600">
                 No appointments found.{" "}
-                {localStorage.getItem("role") === "patient" &&
-                  "Schedule one with a doctor!"}
+                {user.role === "patient" && "Schedule one with a doctor!"}
               </p>
             </div>
           ) : (
@@ -102,7 +130,7 @@ export default function Appointments() {
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <h4 className="text-lg font-medium text-gray-800">
-                          {localStorage.getItem("role") === "doctor"
+                          {user.role === "doctor"
                             ? `Patient: ${
                                 appointment.Patient?.name ||
                                 appointment.patientName ||
@@ -115,7 +143,7 @@ export default function Appointments() {
                               }`}
                         </h4>
                         <p className="text-sm text-gray-500">
-                          {localStorage.getItem("role") === "doctor"
+                          {user.role === "doctor"
                             ? ""
                             : appointment.Doctor?.specialization || ""}
                         </p>
@@ -154,9 +182,22 @@ export default function Appointments() {
                     <div className="mt-4 flex justify-end">
                       <button
                         onClick={() => handleJoinRoom(appointment.id)}
-                        className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+                        className={`${
+                          liveAppointments[appointment.id] ||
+                          user.role === "doctor"
+                            ? "bg-green-500 hover:bg-green-600"
+                            : "bg-blue-500 hover:bg-blue-600"
+                        } text-white font-bold py-2 px-4 rounded`}
+                        disabled={
+                          user.role === "patient" &&
+                          !liveAppointments[appointment.id]
+                        }
                       >
-                        Live
+                        {user.role === "doctor"
+                          ? "Start Live"
+                          : liveAppointments[appointment.id]
+                          ? "Join Live"
+                          : "Waiting for Doctor"}
                       </button>
                     </div>
                   </div>

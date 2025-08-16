@@ -41,17 +41,20 @@ export default function QRScanner({ onScanSuccess, onScanFailure }) {
 
     const startScanner = async () => {
       try {
+        console.log("Starting scanner...");
         await scanner.start(
           { facingMode: "environment" },
           config,
           async (decodedText) => {
             if (!isMounted) return;
+            console.log("Scan success:", decodedText);
             await stopScanner();
             onScanSuccess(decodedText);
             setError(null);
           },
           (error) => {
             if (!isMounted) return;
+            console.warn("Scan failure:", error);
             if (onScanFailure) onScanFailure(error);
             setError(
               "The QR Code is not detected by the camera or the QR code is not valid"
@@ -61,16 +64,13 @@ export default function QRScanner({ onScanSuccess, onScanFailure }) {
       } catch (err) {
         if (!isMounted) return;
         console.error("Error starting QR scanner:", err);
-        setError(err.message);
       }
     };
 
     startScanner();
 
     return () => {
-      if (isMounted) {
-        stopScanner();
-      }
+      stopScanner();
     };
   }, [onScanSuccess, onScanFailure, isScanning, isMounted]);
 

@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { PulseLoader } from "react-spinners";
 import { FaUserCircle } from "react-icons/fa";
+import { useAuth } from "../context/AuthContext";
 
 //
 import socket from "../services/socketService";
@@ -29,6 +30,7 @@ export default function DoctorDashboard() {
   const [isUploading, setIsUploading] = useState(false);
 
   const navigate = useNavigate();
+  const { user, switchToPatientView } = useAuth();
 
   const fetchAppointments = async () => {
     if (!doctor) return;
@@ -206,7 +208,7 @@ export default function DoctorDashboard() {
   const handleScanSuccess = async (decodedText) => {
     try {
       const patientId =
-        decodedText.split("/patient/")[1]?.split("/")[0] || decodedText;
+        decodedText.split("/patient/user/")[1]?.split("/")[0] || decodedText;
       const response = await axios.post(
         "http://localhost:5000/api/doctor/scan-qrcode",
         { qrData: patientId },
@@ -218,6 +220,8 @@ export default function DoctorDashboard() {
       );
       if (response.data.success) {
         setPatient(response.data.patient);
+        // switchToPatientView(response.data.patient); // Temporarily disabled to prevent role switching
+        console.log("Patient data:", response.data.patient); // Log patient data to confirm it's fetched
         navigate("/updatePatientData", {
           state: {
             patient: response.data.patient,
@@ -241,6 +245,9 @@ export default function DoctorDashboard() {
   if (!doctor) return <div>Loading...</div>;
 
   const acceptNotification = (patientId) => {
+    if (startScan) {
+      setStartScan(false); // This will trigger the cleanup in QRScanner
+    }
     const roomId = Math.random().toString(36).substring(2, 15); // Generate random room ID
     socket.emit("acceptNotification", {
       doctorId: localStorage.getItem("doctorId"),
